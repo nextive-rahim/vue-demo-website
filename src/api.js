@@ -114,4 +114,13 @@ export const api = {
     // Public course catalog
     courses: () => request('GET', '/courses'),
     course: (id) => request('GET', `/courses/${id}`),
+    // Step 3: load a single content item's data when it is clicked.
+    courseContent: (courseId, contentId) => request('GET', `/courses/${courseId}/contents/${contentId}`),
+
+    // Student exam player (auth required — Bearer token).
+    getExam: (courseId, contentId) => request('GET', `/courses/${courseId}/contents/${contentId}/exam`),
+    startExam: (courseId, contentId) => request('POST', `/courses/${courseId}/contents/${contentId}/exam/start`),
+    submitExam: (courseId, contentId, answers) => request('POST', `/courses/${courseId}/contents/${contentId}/exam/submit`, { answers }),
+    examResult: (courseId, contentId) => request('GET', `/courses/${courseId}/contents/${contentId}/exam/result`),
+    examRanking: (courseId, contentId) => request('GET', `/courses/${courseId}/contents/${contentId}/exam/ranking`),
 };

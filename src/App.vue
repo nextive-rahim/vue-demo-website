@@ -112,7 +112,7 @@ function onLogout() {
 
             <CoursesView v-else-if="screen === 'courses'" @open="openCourse" @back="screen = 'home'" />
 
-            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" @back="screen = 'courses'" />
+            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :user="user" @back="screen = 'courses'" @login="startAuth" />
 
             <!-- Auth + account in a centered card -->
             <main v-else class="mx-auto flex max-w-md flex-col px-6 py-12">
