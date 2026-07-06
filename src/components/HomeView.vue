@@ -2,13 +2,16 @@
 import { onMounted, ref } from 'vue';
 import { api } from '../api';
 import AdvertisementBanner from './AdvertisementBanner.vue';
-import AdvertisementSection from './AdvertisementSection.vue';
+import AdvertisementCarousel from './AdvertisementCarousel.vue';
 import AdvertisementPopup from './AdvertisementPopup.vue';
+import CourseCard from './CourseCard.vue';
+import CategoryGrid from './CategoryGrid.vue';
 
-const emit = defineEmits(['open', 'browse', 'login']);
+const emit = defineEmits(['open', 'browse', 'login', 'programs']);
 
 const courses = ref([]);
 const loading = ref(true);
+const homeAds = ref([]);
 
 async function load() {
     try {
@@ -17,6 +20,14 @@ async function load() {
         courses.value = [];
     } finally {
         loading.value = false;
+    }
+}
+
+async function loadAds() {
+    try {
+        homeAds.value = (await api.advertisements('home')).data;
+    } catch {
+        homeAds.value = [];
     }
 }
 
@@ -42,7 +53,10 @@ const testimonials = [
     { name: 'Nadia K.', role: 'Job preparation', quote: 'I loved how organised the courses are. The notices kept me updated on new live classes.', avatar: 'N' },
 ];
 
-onMounted(load);
+onMounted(() => {
+    load();
+    loadAds();
+});
 </script>
 
 <template>
@@ -107,8 +121,13 @@ onMounted(load);
                     </dl>
                 </div>
 
-                <!-- Floating visual -->
-                <div class="animate-scale-in relative mx-auto hidden w-full max-w-md lg:block">
+                <!-- Advertisement carousel (falls back to the product mockup when no ads) -->
+                <div v-if="homeAds.length" class="animate-scale-in relative mx-auto w-full max-w-md">
+                    <AdvertisementCarousel :ads="homeAds" />
+                </div>
+
+                <!-- Floating visual (shown when there are no ads) -->
+                <div v-else class="animate-scale-in relative mx-auto hidden w-full max-w-md lg:block">
                     <div class="relative rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 shadow-2xl shadow-indigo-500/30">
                         <div class="rounded-2xl bg-white/95 p-5 backdrop-blur">
                             <div class="flex items-center gap-3">
@@ -183,6 +202,9 @@ onMounted(load);
             </div>
         </section>
 
+        <!-- ============================ CATEGORY GRID ============================ -->
+        <CategoryGrid @select="emit('programs', $event)" />
+
         <!-- ============================ STATS BAND ============================ -->
         <section class="px-5 sm:px-6">
             <div v-reveal class="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 px-6 py-14 shadow-2xl shadow-indigo-500/30 sm:px-12">
@@ -196,9 +218,6 @@ onMounted(load);
                 </div>
             </div>
         </section>
-
-        <!-- ============================ SPONSORED / ADS ============================ -->
-        <AdvertisementSection />
 
         <!-- ============================ POPULAR COURSES ============================ -->
         <section class="mx-auto max-w-7xl px-5 py-20 sm:px-6">
@@ -225,26 +244,14 @@ onMounted(load);
             </div>
 
             <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <button
+                <CourseCard
                     v-for="(course, i) in courses"
                     :key="course.id"
                     v-reveal="{ delay: i * 90 }"
-                    class="group overflow-hidden rounded-3xl border border-slate-100 bg-white text-left shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-indigo-500/10"
-                    @click="emit('open', course.id)"
-                >
-                    <div class="relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-500 to-violet-600 text-6xl font-black text-white/90">
-                        <span class="transition duration-500 group-hover:scale-125">{{ course.title.charAt(0) }}</span>
-                        <span class="absolute right-4 top-4 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/30 backdrop-blur">{{ course.contents_count }} lessons</span>
-                    </div>
-                    <div class="p-6">
-                        <h3 class="font-bold text-slate-900 transition group-hover:text-indigo-600">{{ course.title }}</h3>
-                        <p class="mt-2 line-clamp-2 text-sm text-slate-500">{{ course.description }}</p>
-                        <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600">
-                            Explore course
-                            <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                        </span>
-                    </div>
-                </button>
+                    :course="course"
+                    :index="i"
+                    @open="emit('open', $event)"
+                />
 
                 <p v-if="!courses.length" class="col-span-full rounded-3xl border border-dashed border-slate-200 py-16 text-center text-slate-400">No courses available yet.</p>
             </div>

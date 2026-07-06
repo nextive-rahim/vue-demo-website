@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { api, getToken, clearToken } from './api';
 import SiteHeader from './components/SiteHeader.vue';
 import HomeView from './components/HomeView.vue';
@@ -11,6 +11,9 @@ import ReviewsView from './components/ReviewsView.vue';
 import BlogView from './components/BlogView.vue';
 import PostDetailView from './components/PostDetailView.vue';
 import AboutView from './components/AboutView.vue';
+import LiveCoursesView from './components/LiveCoursesView.vue';
+import FreeResourcesView from './components/FreeResourcesView.vue';
+import ProgramsView from './components/ProgramsView.vue';
 import SiteFooter from './components/SiteFooter.vue';
 import PhoneStep from './components/PhoneStep.vue';
 import PasswordStep from './components/PasswordStep.vue';
@@ -29,6 +32,7 @@ const notice = ref(null);
 const selectedCourseId = ref(null);
 const selectedNoticeId = ref(null);
 const selectedPostId = ref(null);
+const selectedProgramCategory = ref('all');
 
 onMounted(async () => {
     if (!getToken()) {
@@ -44,12 +48,25 @@ onMounted(async () => {
     screen.value = 'home';
 });
 
+// Auth/account screens render in a card outside the cached marketing views.
+const authScreens = ['phone', 'password', 'signup', 'forgot', 'reset', 'dashboard'];
+const isAuthScreen = computed(() => authScreens.includes(screen.value));
+
+// Scroll to the top on every screen change (views stay cached via <KeepAlive>).
+watch(screen, () => window.scrollTo({ top: 0, behavior: 'auto' }));
+
 function navigate(action) {
-    if (['courses', 'notices', 'reviews', 'blog', 'about'].includes(action)) {
+    if (['courses', 'notices', 'reviews', 'blog', 'about', 'live', 'free', 'programs'].includes(action)) {
+        if (action === 'programs') selectedProgramCategory.value = 'all';
         screen.value = action;
     } else {
         screen.value = 'home';
     }
+}
+
+function openPrograms(category) {
+    selectedProgramCategory.value = category || 'all';
+    screen.value = 'programs';
 }
 
 function openCourse(id) {
@@ -130,7 +147,9 @@ function onLogout() {
                 @account="screen = 'dashboard'"
             />
 
-            <HomeView v-if="screen === 'home'" @open="openCourse" @browse="screen = 'courses'" @login="startAuth" />
+            <!-- Marketing views cached so switching pages doesn't re-fetch the API. -->
+            <KeepAlive :max="12">
+            <HomeView v-if="screen === 'home'" @open="openCourse" @browse="screen = 'courses'" @login="startAuth" @programs="openPrograms" />
 
             <CoursesView v-else-if="screen === 'courses'" @open="openCourse" @back="screen = 'home'" />
 
@@ -148,8 +167,15 @@ function onLogout() {
 
             <AboutView v-else-if="screen === 'about'" @back="screen = 'home'" @browse="screen = 'courses'" />
 
+            <LiveCoursesView v-else-if="screen === 'live'" @back="screen = 'home'" />
+
+            <FreeResourcesView v-else-if="screen === 'free'" @back="screen = 'home'" />
+
+            <ProgramsView v-else-if="screen === 'programs'" :initial-category="selectedProgramCategory" @back="screen = 'home'" />
+            </KeepAlive>
+
             <!-- Auth + account in a centered glass card on an ambient backdrop -->
-            <main v-else class="relative isolate mx-auto flex min-h-[82vh] max-w-md flex-col justify-center px-6 py-12">
+            <main v-if="isAuthScreen" class="relative isolate mx-auto flex min-h-[82vh] max-w-md flex-col justify-center px-6 py-12">
                 <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
                     <div class="animate-blob absolute -left-24 top-10 h-72 w-72 bg-gradient-to-br from-indigo-300/40 to-blue-300/40 blur-3xl"></div>
                     <div class="animate-blob absolute -right-16 bottom-10 h-80 w-80 bg-gradient-to-br from-violet-300/40 to-fuchsia-300/40 blur-3xl" style="animation-delay: -6s"></div>
@@ -201,7 +227,7 @@ function onLogout() {
             </main>
 
             <SiteFooter
-                v-if="['home', 'courses', 'courseDetail', 'notices', 'noticeDetail', 'reviews', 'blog', 'postDetail', 'about'].includes(screen)"
+                v-if="['home', 'courses', 'courseDetail', 'notices', 'noticeDetail', 'reviews', 'blog', 'postDetail', 'about', 'live', 'free', 'programs'].includes(screen)"
                 @navigate="navigate"
             />
         </template>

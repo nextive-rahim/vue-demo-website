@@ -3,12 +3,12 @@ const emit = defineEmits(['navigate']);
 
 const columns = [
     {
-        title: 'Platform',
+        title: 'Learn',
         links: [
             { label: 'Courses', action: 'courses' },
-            { label: 'Notice board', action: 'notices' },
-            { label: 'Student reviews', action: 'reviews' },
-            { label: 'Blog and news', action: 'blog' },
+            { label: 'Programs', action: 'programs' },
+            { label: 'Live classes', action: 'live' },
+            { label: 'Free resources', action: 'free' },
         ],
     },
     {

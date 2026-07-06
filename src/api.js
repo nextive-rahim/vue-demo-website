@@ -128,6 +128,15 @@ export const api = {
     // Public advertisements (live only). Filter by placement: banner | popup | home
     advertisements: (placement = null) => request('GET', `/advertisements${placement ? `?placement=${placement}` : ''}`),
 
+    // Public live courses
+    liveCourses: () => request('GET', '/live-courses'),
+
+    // Public free resources. Filter by type: note | pdf | book
+    freeResources: (type = null) => request('GET', `/free-resources${type ? `?type=${type}` : ''}`),
+
+    // Public programs (academic batches). Filter by category: academic | skills | admission | job
+    programs: (category = null) => request('GET', `/programs${category ? `?category=${category}` : ''}`),
+
     // Public course catalog
     courses: () => request('GET', '/courses'),
     course: (id) => request('GET', `/courses/${id}`),

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { api } from '../api';
 import AlertMessage from './AlertMessage.vue';
 import ExamPlayer from './ExamPlayer.vue';
@@ -91,6 +91,13 @@ function embedUrl(url) {
 }
 
 onMounted(load);
+
+// Re-fetch when opening a different course (the view is cached via <KeepAlive>).
+watch(() => props.courseId, () => {
+    selectedId.value = null;
+    selectedContent.value = null;
+    load();
+});
 </script>
 
 <template>

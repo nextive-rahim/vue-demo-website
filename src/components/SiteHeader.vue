@@ -11,6 +11,9 @@ const emit = defineEmits(['navigate', 'login', 'account']);
 // Keep a nav item lit while viewing a detail page that belongs to it.
 const activeGroups = {
     courses: ['courses', 'courseDetail'],
+    programs: ['programs'],
+    live: ['live'],
+    free: ['free'],
     notices: ['notices', 'noticeDetail'],
     reviews: ['reviews'],
     blog: ['blog', 'postDetail'],
@@ -23,11 +26,13 @@ function isActive(action, active) {
 
 const navItems = [
     { label: 'Courses', action: 'courses' },
-    { label: 'Features', action: 'home' },
-    { label: "Student's Review", action: 'reviews' },
+    { label: 'Programs', action: 'programs' },
+    { label: 'Live', action: 'live' },
+    { label: 'Free', action: 'free' },
+    { label: 'Reviews', action: 'reviews' },
     { label: 'Notice', action: 'notices' },
-    { label: 'About us', action: 'about' },
-    { label: 'Blog and News', action: 'blog' },
+    { label: 'Blog', action: 'blog' },
+    { label: 'About', action: 'about' },
 ];
 
 const scrolled = ref(false);
