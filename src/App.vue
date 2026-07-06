@@ -5,6 +5,13 @@ import SiteHeader from './components/SiteHeader.vue';
 import HomeView from './components/HomeView.vue';
 import CoursesView from './components/CoursesView.vue';
 import CourseDetailView from './components/CourseDetailView.vue';
+import NoticesView from './components/NoticesView.vue';
+import NoticeDetailView from './components/NoticeDetailView.vue';
+import ReviewsView from './components/ReviewsView.vue';
+import BlogView from './components/BlogView.vue';
+import PostDetailView from './components/PostDetailView.vue';
+import AboutView from './components/AboutView.vue';
+import SiteFooter from './components/SiteFooter.vue';
 import PhoneStep from './components/PhoneStep.vue';
 import PasswordStep from './components/PasswordStep.vue';
 import SignupStep from './components/SignupStep.vue';
@@ -13,13 +20,15 @@ import ResetStep from './components/ResetStep.vue';
 import DashboardView from './components/DashboardView.vue';
 import AlertMessage from './components/AlertMessage.vue';
 
-// loading | home | courses | courseDetail | phone | password | signup | forgot | reset | dashboard
+// loading | home | courses | courseDetail | notices | noticeDetail | reviews | blog | postDetail | about | phone | password | signup | forgot | reset | dashboard
 const screen = ref('loading');
 const phone = ref('');
 const devCode = ref(null);
 const user = ref(null);
 const notice = ref(null);
 const selectedCourseId = ref(null);
+const selectedNoticeId = ref(null);
+const selectedPostId = ref(null);
 
 onMounted(async () => {
     if (!getToken()) {
@@ -36,8 +45,8 @@ onMounted(async () => {
 });
 
 function navigate(action) {
-    if (action === 'courses') {
-        screen.value = 'courses';
+    if (['courses', 'notices', 'reviews', 'blog', 'about'].includes(action)) {
+        screen.value = action;
     } else {
         screen.value = 'home';
     }
@@ -46,6 +55,16 @@ function navigate(action) {
 function openCourse(id) {
     selectedCourseId.value = id;
     screen.value = 'courseDetail';
+}
+
+function openNotice(id) {
+    selectedNoticeId.value = id;
+    screen.value = 'noticeDetail';
+}
+
+function openPost(id) {
+    selectedPostId.value = id;
+    screen.value = 'postDetail';
 }
 
 function startAuth() {
@@ -97,7 +116,10 @@ function onLogout() {
 
 <template>
     <div class="min-h-full">
-        <div v-if="screen === 'loading'" class="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>
+        <div v-if="screen === 'loading'" class="flex min-h-screen flex-col items-center justify-center gap-4">
+            <span class="flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-2xl font-black text-white shadow-lg shadow-indigo-500/30">D</span>
+            <span class="text-sm font-medium text-slate-400">Loading…</span>
+        </div>
 
         <template v-else>
             <SiteHeader
@@ -114,11 +136,28 @@ function onLogout() {
 
             <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :user="user" @back="screen = 'courses'" @login="startAuth" />
 
-            <!-- Auth + account in a centered card -->
-            <main v-else class="mx-auto flex max-w-md flex-col px-6 py-12">
+            <NoticesView v-else-if="screen === 'notices'" @open="openNotice" @back="screen = 'home'" />
+
+            <NoticeDetailView v-else-if="screen === 'noticeDetail'" :notice-id="selectedNoticeId" @back="screen = 'notices'" />
+
+            <ReviewsView v-else-if="screen === 'reviews'" @back="screen = 'home'" />
+
+            <BlogView v-else-if="screen === 'blog'" @open="openPost" @back="screen = 'home'" />
+
+            <PostDetailView v-else-if="screen === 'postDetail'" :post-id="selectedPostId" @back="screen = 'blog'" />
+
+            <AboutView v-else-if="screen === 'about'" @back="screen = 'home'" @browse="screen = 'courses'" />
+
+            <!-- Auth + account in a centered glass card on an ambient backdrop -->
+            <main v-else class="relative isolate mx-auto flex min-h-[82vh] max-w-md flex-col justify-center px-6 py-12">
+                <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                    <div class="animate-blob absolute -left-24 top-10 h-72 w-72 bg-gradient-to-br from-indigo-300/40 to-blue-300/40 blur-3xl"></div>
+                    <div class="animate-blob absolute -right-16 bottom-10 h-80 w-80 bg-gradient-to-br from-violet-300/40 to-fuchsia-300/40 blur-3xl" style="animation-delay: -6s"></div>
+                </div>
+
                 <AlertMessage v-if="notice" type="success" :message="notice" class="mb-6" />
 
-                <div class="rounded-2xl bg-white p-8 shadow-xl shadow-slate-200/60 ring-1 ring-slate-100">
+                <div class="animate-scale-in rounded-3xl border border-white/60 bg-white/80 p-8 shadow-2xl shadow-indigo-500/10 ring-1 ring-slate-100 backdrop-blur-xl">
                     <PhoneStep
                         v-if="screen === 'phone'"
                         :initial-phone="phone"
@@ -160,6 +199,11 @@ function onLogout() {
                     />
                 </div>
             </main>
+
+            <SiteFooter
+                v-if="['home', 'courses', 'courseDetail', 'notices', 'noticeDetail', 'reviews', 'blog', 'postDetail', 'about'].includes(screen)"
+                @navigate="navigate"
+            />
         </template>
     </div>
 </template>

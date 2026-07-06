@@ -91,42 +91,46 @@ async function logout() {
 
 <template>
     <div>
+        <!-- Profile header -->
         <div class="flex items-center gap-4">
-            <button type="button" class="group relative h-16 w-16 shrink-0" @click="pickAvatar">
-                <img
-                    v-if="user.avatar_url"
-                    :src="user.avatar_url"
-                    alt="Avatar"
-                    class="h-16 w-16 rounded-full object-cover ring-2 ring-slate-100"
-                />
-                <span
-                    v-else
-                    class="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-2xl font-bold text-indigo-600"
-                >{{ (user.name || '?').charAt(0).toUpperCase() }}</span>
-                <span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-xs font-medium text-white opacity-0 transition group-hover:opacity-100">
+            <button type="button" class="group relative h-20 w-20 shrink-0" @click="pickAvatar">
+                <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 p-[3px]">
+                    <img
+                        v-if="user.avatar_url"
+                        :src="user.avatar_url"
+                        alt="Avatar"
+                        class="h-full w-full rounded-full object-cover ring-2 ring-white"
+                    />
+                    <span
+                        v-else
+                        class="flex h-full w-full items-center justify-center rounded-full bg-white text-2xl font-black text-indigo-600"
+                    >{{ (user.name || '?').charAt(0).toUpperCase() }}</span>
+                </span>
+                <span class="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-600 shadow ring-1 ring-slate-100 transition group-hover:text-indigo-600">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke-linejoin="round" /><circle cx="12" cy="13" r="4" /></svg>
+                </span>
+                <span class="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/40 text-xs font-medium text-white opacity-0 transition group-hover:opacity-100">
                     {{ uploadingAvatar ? '…' : 'Change' }}
                 </span>
             </button>
-            <div>
-                <h1 class="text-xl font-bold text-slate-900">{{ user.name }}</h1>
+            <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-widest text-indigo-500">My account</p>
+                <h1 class="truncate text-2xl font-black tracking-tight text-slate-900">{{ user.name }}</h1>
                 <p class="text-sm text-slate-500">{{ user.phone }}</p>
-                <button type="button" class="mt-1 text-xs font-medium text-indigo-600 hover:text-indigo-500" @click="pickAvatar">
-                    {{ uploadingAvatar ? 'Uploading…' : 'Upload photo' }}
-                </button>
             </div>
             <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarSelected" />
         </div>
 
         <AlertMessage v-if="avatarError" type="error" :message="avatarError" class="mt-4" />
 
-        <dl class="mt-6 divide-y divide-slate-100 rounded-xl border border-slate-200 text-sm">
-            <div class="flex justify-between px-4 py-3">
-                <dt class="text-slate-500">Phone</dt>
-                <dd class="font-medium text-slate-900">{{ user.phone }}</dd>
+        <dl class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Phone</dt>
+                <dd class="mt-0.5 font-semibold text-slate-900">{{ user.phone }}</dd>
             </div>
-            <div class="flex justify-between px-4 py-3">
-                <dt class="text-slate-500">Email</dt>
-                <dd class="font-medium text-slate-900">{{ user.email || '—' }}</dd>
+            <div class="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Email</dt>
+                <dd class="mt-0.5 truncate font-semibold text-slate-900">{{ user.email || '—' }}</dd>
             </div>
         </dl>
 
@@ -144,8 +148,8 @@ async function logout() {
                 Change password
             </AuthButton>
 
-            <form v-else class="space-y-4 rounded-xl border border-slate-200 p-4" @submit.prevent="changePassword">
-                <h2 class="font-semibold text-slate-900">Change password</h2>
+            <form v-else class="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-5" @submit.prevent="changePassword">
+                <h2 class="font-bold text-slate-900">Change password</h2>
                 <AlertMessage type="error" :message="formError" />
                 <TextField
                     v-model="form.current_password"

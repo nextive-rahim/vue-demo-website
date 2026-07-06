@@ -111,6 +111,23 @@ export const api = {
     },
     removeAvatar: () => request('DELETE', '/auth/avatar'),
 
+    // Public notice board
+    notices: () => request('GET', '/notices'),
+    notice: (id) => request('GET', `/notices/${id}`),
+
+    // Public student reviews / success stories
+    studentReviews: () => request('GET', '/student-reviews'),
+
+    // Public blog & news
+    posts: (type = null) => request('GET', `/posts${type ? `?type=${type}` : ''}`),
+    post: (id) => request('GET', `/posts/${id}`),
+
+    // Public about page
+    about: () => request('GET', '/about'),
+
+    // Public advertisements (live only). Filter by placement: banner | popup | home
+    advertisements: (placement = null) => request('GET', `/advertisements${placement ? `?placement=${placement}` : ''}`),
+
     // Public course catalog
     courses: () => request('GET', '/courses'),
     course: (id) => request('GET', `/courses/${id}`),

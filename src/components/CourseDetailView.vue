@@ -94,15 +94,25 @@ onMounted(load);
 </script>
 
 <template>
-    <div class="mx-auto max-w-3xl p-6">
-        <button class="mb-6 text-sm font-medium text-indigo-600 hover:text-indigo-500" @click="emit('back')">← All courses</button>
+    <div class="relative mx-auto max-w-3xl px-5 py-14 sm:px-6">
+        <div class="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-to-br from-indigo-200/50 to-violet-200/50 blur-3xl"></div>
 
-        <AlertMessage type="error" :message="error" class="mb-6" />
-        <div v-if="loading" class="py-16 text-center text-slate-400">Loading…</div>
+        <button class="relative mb-8 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-indigo-600" @click="emit('back')">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            All courses
+        </button>
 
-        <div v-else-if="course">
-            <h1 class="text-3xl font-bold text-slate-900">{{ course.title }}</h1>
-            <p class="mt-2 text-slate-600">{{ course.description }}</p>
+        <AlertMessage type="error" :message="error" class="relative mb-6" />
+        <div v-if="loading" class="relative py-16 text-center text-slate-400">Loading…</div>
+
+        <div v-else-if="course" class="animate-fade-up relative">
+            <span class="text-sm font-bold uppercase tracking-widest text-indigo-500">Course</span>
+            <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 lg:text-4xl">{{ course.title }}</h1>
+            <p class="mt-3 text-lg text-slate-500">{{ course.description }}</p>
+            <p class="mt-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-sm font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-100">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V6a2 2 0 012-2h9l5 5v10a2 2 0 01-2 2H6a2 2 0 01-2-2z" stroke-linejoin="round" /></svg>
+                {{ course.contents.length }} lessons
+            </p>
 
             <!-- Step 2: list of content names. Click one to load its data (step 3). -->
             <ul class="mt-8 space-y-3">
