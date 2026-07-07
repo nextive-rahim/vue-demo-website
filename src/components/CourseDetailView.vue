@@ -6,6 +6,7 @@ import ExamPlayer from './ExamPlayer.vue';
 
 const props = defineProps({
     courseId: { type: [Number, String], required: true },
+    initialExamId: { type: [Number, String], default: null },
     user: { type: Object, default: null },
 });
 
@@ -26,11 +27,21 @@ async function load() {
     error.value = null;
     try {
         course.value = (await api.course(props.courseId)).data;
+        autoOpenExam();
     } catch (e) {
         error.value = 'Could not load this course.';
     } finally {
         loading.value = false;
     }
+}
+
+/** Jump straight into a specific exam's detail page (e.g. from "Today's Live"). */
+function autoOpenExam() {
+    if (!props.initialExamId || !course.value) {
+        return;
+    }
+    const item = course.value.contents?.find((c) => String(c.id) === String(props.initialExamId));
+    examItem.value = item ?? { id: props.initialExamId, type: 'exam' };
 }
 
 /** Step 3: fetch one content item's full data from the dedicated endpoint. */
@@ -53,6 +64,18 @@ async function openContent(item) {
     } finally {
         contentLoading.value = false;
     }
+}
+
+// Exams open as a dedicated full page (detail → take → analysis), not inline.
+const examItem = ref(null);
+
+function openExam(item) {
+    examItem.value = item;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function closeExam() {
+    examItem.value = null;
 }
 
 const typeMeta = {
@@ -96,7 +119,17 @@ onMounted(load);
 watch(() => props.courseId, () => {
     selectedId.value = null;
     selectedContent.value = null;
+    examItem.value = null;
     load();
+});
+
+// Jump into (or out of) a specific exam when navigated with an exam id.
+watch(() => props.initialExamId, (id) => {
+    if (id) {
+        autoOpenExam();
+    } else {
+        examItem.value = null;
+    }
 });
 </script>
 
@@ -113,6 +146,22 @@ watch(() => props.courseId, () => {
         <div v-if="loading" class="relative py-16 text-center text-slate-400">Loading…</div>
 
         <div v-else-if="course" class="animate-fade-up relative">
+            <!-- Exam full page: detail → take → analysis -->
+            <div v-if="examItem">
+                <button class="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-indigo-600" @click="closeExam">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                    Back to course
+                </button>
+                <div v-if="!user" class="rounded-3xl border border-indigo-100 bg-indigo-50 px-6 py-12 text-center">
+                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl shadow-sm">🔒</div>
+                    <p class="mt-4 text-lg font-bold text-slate-900">Log in to take this exam</p>
+                    <p class="mt-1 text-sm text-slate-500">You need an account to start the exam and see your analysis.</p>
+                    <button class="mt-5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:-translate-y-0.5" @click="emit('login')">Log in to start</button>
+                </div>
+                <ExamPlayer v-else :key="examItem.id" :course-id="courseId" :content-id="examItem.id" />
+            </div>
+
+            <template v-else>
             <span class="text-sm font-bold uppercase tracking-widest text-indigo-500">Course</span>
             <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-900 lg:text-4xl">{{ course.title }}</h1>
             <p class="mt-3 text-lg text-slate-500">{{ course.description }}</p>
@@ -129,7 +178,7 @@ watch(() => props.courseId, () => {
                     class="overflow-hidden rounded-xl border bg-white"
                     :class="selectedId === item.id ? 'border-indigo-300 ring-1 ring-indigo-200' : 'border-slate-200'"
                 >
-                    <button class="flex w-full items-center gap-3 p-5 text-left hover:bg-slate-50" @click="openContent(item)">
+                    <button class="flex w-full items-center gap-3 p-5 text-left hover:bg-slate-50" @click="item.type === 'exam' ? openExam(item) : openContent(item)">
                         <span class="flex h-9 w-9 items-center justify-center rounded-lg text-lg" :class="typeMeta[item.type]?.color">
                             {{ typeMeta[item.type]?.icon }}
                         </span>
@@ -137,7 +186,8 @@ watch(() => props.courseId, () => {
                             <p class="font-semibold text-slate-900">{{ item.title }}</p>
                             <p class="text-xs uppercase tracking-wide text-slate-400">{{ typeMeta[item.type]?.label }}</p>
                         </div>
-                        <span class="text-slate-300">{{ selectedId === item.id ? '▾' : '▸' }}</span>
+                        <span v-if="item.type === 'exam'" class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">Start →</span>
+                        <span v-else class="text-slate-300">{{ selectedId === item.id ? '▾' : '▸' }}</span>
                     </button>
 
                     <!-- Step 3: the selected item's data, loaded from the single-content endpoint. -->
@@ -209,6 +259,7 @@ watch(() => props.courseId, () => {
 
                 <li v-if="!course.contents.length" class="py-10 text-center text-slate-400">No lessons in this course yet.</li>
             </ul>
+            </template>
         </div>
     </div>
 </template>

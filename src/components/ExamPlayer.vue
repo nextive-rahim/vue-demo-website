@@ -42,6 +42,33 @@ const resultPercentage = computed(() => {
     return Math.round((result.value.score / result.value.total_marks) * 100);
 });
 
+// Pass mark + pass/fail come from the server (admin-set per exam; defaults to 40%).
+const passMark = computed(() => result.value?.pass_mark ?? 40);
+const passed = computed(() => {
+    if (result.value?.passed !== null && result.value?.passed !== undefined) {
+        return result.value.passed;
+    }
+    return resultPercentage.value !== null && resultPercentage.value >= passMark.value;
+});
+
+// Right / wrong / unanswered breakdown from the published review.
+const analysis = computed(() => {
+    const qs = result.value?.questions ?? [];
+    let correct = 0;
+    let wrong = 0;
+    let unanswered = 0;
+    for (const q of qs) {
+        if (q.your_option_id === null || q.your_option_id === undefined) {
+            unanswered += 1;
+        } else if (q.is_correct) {
+            correct += 1;
+        } else {
+            wrong += 1;
+        }
+    }
+    return { correct, wrong, unanswered, total: qs.length };
+});
+
 function formatClock(totalSeconds) {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
@@ -285,49 +312,59 @@ onBeforeUnmount(stopTimer);
 
         <AlertMessage v-if="error && phase === 'error'" type="error" :message="error" />
 
-        <!-- INTRO: meta + start / resume -->
+        <!-- INTRO / DETAIL: meta + start / resume -->
         <template v-if="phase === 'intro' && exam">
-            <div class="space-y-4">
-                <div>
-                    <h3 class="text-lg font-semibold text-slate-900">{{ exam.title }}</h3>
-                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500">
-                        <span>⏱ {{ exam.duration_minutes }} min</span>
-                        <span>🏆 {{ exam.total_marks }} marks</span>
-                        <span>❓ {{ exam.question_count }} questions</span>
+            <div class="space-y-5">
+                <!-- Hero -->
+                <div class="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 p-6 text-white shadow-xl shadow-indigo-500/25 sm:p-8">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider ring-1 ring-inset ring-white/30">🎯 Exam</span>
+                    <h3 class="mt-4 text-2xl font-black sm:text-3xl">{{ exam.title }}</h3>
+                    <div class="mt-6 grid grid-cols-3 gap-3">
+                        <div class="rounded-2xl bg-white/15 p-3 text-center ring-1 ring-inset ring-white/20">
+                            <p class="text-xl font-black">{{ exam.duration_minutes || '—' }}</p>
+                            <p class="text-[11px] font-medium uppercase tracking-wide text-white/80">Minutes</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/15 p-3 text-center ring-1 ring-inset ring-white/20">
+                            <p class="text-xl font-black">{{ exam.total_marks }}</p>
+                            <p class="text-[11px] font-medium uppercase tracking-wide text-white/80">Marks</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/15 p-3 text-center ring-1 ring-inset ring-white/20">
+                            <p class="text-xl font-black">{{ exam.question_count }}</p>
+                            <p class="text-[11px] font-medium uppercase tracking-wide text-white/80">Questions</p>
+                        </div>
                     </div>
+                    <p v-if="exam.pass_mark" class="mt-4 text-sm font-medium text-white/85">✅ Pass mark: {{ exam.pass_mark }}%</p>
                 </div>
 
-                <dl class="grid grid-cols-1 gap-2 text-slate-500 sm:grid-cols-3">
-                    <div v-if="exam.start_time">
-                        <dt class="text-xs uppercase tracking-wide text-slate-400">Opens</dt>
-                        <dd>{{ formatDate(exam.start_time) }}</dd>
+                <!-- Schedule -->
+                <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div v-if="exam.start_time" class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Opens</dt>
+                        <dd class="mt-1 text-sm font-semibold text-slate-700">{{ formatDate(exam.start_time) }}</dd>
                     </div>
-                    <div v-if="exam.end_time">
-                        <dt class="text-xs uppercase tracking-wide text-slate-400">Closes</dt>
-                        <dd>{{ formatDate(exam.end_time) }}</dd>
+                    <div v-if="exam.end_time" class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Closes</dt>
+                        <dd class="mt-1 text-sm font-semibold text-slate-700">{{ formatDate(exam.end_time) }}</dd>
                     </div>
-                    <div v-if="exam.result_publish_time">
-                        <dt class="text-xs uppercase tracking-wide text-slate-400">Results</dt>
-                        <dd>{{ formatDate(exam.result_publish_time) }}</dd>
+                    <div v-if="exam.result_publish_time" class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Results</dt>
+                        <dd class="mt-1 text-sm font-semibold text-slate-700">{{ formatDate(exam.result_publish_time) }}</dd>
                     </div>
                 </dl>
 
+                <div class="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+                    📋 One attempt only. The exam auto-submits when the timer runs out. Choose one answer per question.
+                </div>
+
                 <AlertMessage v-if="error" type="error" :message="error" />
 
-                <div
-                    v-if="!exam.is_open"
-                    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
-                >
+                <div v-if="!exam.is_open" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                     This exam window is closed. You cannot take it right now.
                 </div>
 
                 <template v-else>
-                    <AuthButton
-                        v-if="attempt && attempt.status === 'in_progress'"
-                        :loading="starting"
-                        @click="start"
-                    >Resume exam</AuthButton>
-                    <AuthButton v-else :loading="starting" @click="start">Start exam</AuthButton>
+                    <AuthButton v-if="attempt && attempt.status === 'in_progress'" :loading="starting" @click="start">Resume exam →</AuthButton>
+                    <AuthButton v-else :loading="starting" @click="start">Start exam →</AuthButton>
                 </template>
             </div>
         </template>
@@ -422,22 +459,39 @@ onBeforeUnmount(stopTimer);
 
                     <!-- ANALYSIS -->
                     <template v-if="resultTab === 'analysis'">
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <div class="rounded-xl border border-slate-200 p-4">
-                                <p class="text-xs uppercase tracking-wide text-slate-400">Score</p>
-                                <p class="mt-1 text-2xl font-bold text-slate-900">{{ result.score }} <span class="text-base font-medium text-slate-400">/ {{ result.total_marks }}</span></p>
+                        <!-- Result hero: pass/fail + score + time -->
+                        <div
+                            class="overflow-hidden rounded-3xl p-6 text-white shadow-xl sm:p-8"
+                            :class="passed ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30' : 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30'"
+                        >
+                            <div class="flex flex-wrap items-center justify-between gap-6">
+                                <div>
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wider ring-1 ring-inset ring-white/30">
+                                        {{ passed ? '🎉 Passed' : '❌ Failed' }}
+                                    </span>
+                                    <p class="mt-4 text-5xl font-black leading-none">{{ resultPercentage }}%</p>
+                                    <p class="mt-2 text-sm text-white/85">{{ result.score }} / {{ result.total_marks }} marks · pass mark {{ passMark }}%</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs font-medium uppercase tracking-wide text-white/70">Time taken</p>
+                                    <p class="text-2xl font-black">{{ formatDuration(result.attempt?.time_taken_seconds) }}</p>
+                                </div>
                             </div>
-                            <div class="rounded-xl border border-slate-200 p-4">
-                                <p class="text-xs uppercase tracking-wide text-slate-400">Percentage</p>
-                                <p class="mt-1 text-2xl font-bold" :class="resultPercentage >= 50 ? 'text-emerald-600' : 'text-red-600'">{{ resultPercentage }}%</p>
+                        </div>
+
+                        <!-- Right / wrong / skipped -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-center">
+                                <p class="text-3xl font-black text-emerald-600">{{ analysis.correct }}</p>
+                                <p class="mt-1 text-xs font-bold uppercase tracking-wide text-emerald-700">Right</p>
                             </div>
-                            <div class="rounded-xl border border-slate-200 p-4">
-                                <p class="text-xs uppercase tracking-wide text-slate-400">Time taken</p>
-                                <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatDuration(result.attempt?.time_taken_seconds) }}</p>
+                            <div class="rounded-2xl border border-red-100 bg-red-50 p-4 text-center">
+                                <p class="text-3xl font-black text-red-600">{{ analysis.wrong }}</p>
+                                <p class="mt-1 text-xs font-bold uppercase tracking-wide text-red-700">Wrong</p>
                             </div>
-                            <div class="rounded-xl border border-slate-200 p-4">
-                                <p class="text-xs uppercase tracking-wide text-slate-400">Result</p>
-                                <p class="mt-1 text-lg font-semibold" :class="resultPercentage >= 50 ? 'text-emerald-600' : 'text-red-600'">{{ resultPercentage >= 50 ? 'Passed' : 'Failed' }}</p>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+                                <p class="text-3xl font-black text-slate-500">{{ analysis.unanswered }}</p>
+                                <p class="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">Skipped</p>
                             </div>
                         </div>
 

@@ -48,14 +48,34 @@
 /* ------------------------------------------------------------------ *
  * Base
  * ------------------------------------------------------------------ */
-html {
-    scroll-behavior: smooth;
-}
-
 body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+}
+
+/* Keep always-running animations on their own GPU layer so scrolling stays smooth. */
+.animate-blob,
+.animate-float,
+.animate-float-slow,
+.animate-marquee {
+    will-change: transform;
+}
+
+/* Smooth page/tab transitions. */
+.page-enter-active,
+.page-leave-active {
+    transition:
+        opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.page-enter-from {
+    opacity: 0;
+    transform: translateY(12px);
+}
+.page-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
 }
 
 ::selection {
@@ -266,8 +286,13 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html {
-        scroll-behavior: auto;
+    .page-enter-active,
+    .page-leave-active {
+        transition: none;
+    }
+    .page-enter-from,
+    .page-leave-to {
+        transform: none;
     }
     .animate-fade-up,
     .animate-fade-in,

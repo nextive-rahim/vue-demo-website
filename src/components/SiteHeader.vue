@@ -10,6 +10,7 @@ const emit = defineEmits(['navigate', 'login', 'account']);
 
 // Keep a nav item lit while viewing a detail page that belongs to it.
 const activeGroups = {
+    home: ['home'],
     courses: ['courses', 'courseDetail'],
     programs: ['programs'],
     live: ['live'],
@@ -25,9 +26,10 @@ function isActive(action, active) {
 }
 
 const navItems = [
+    { label: 'Home', action: 'home' },
     { label: 'Courses', action: 'courses' },
     { label: 'Programs', action: 'programs' },
-    { label: 'Live', action: 'live' },
+    { label: "Today's Live", action: 'live' },
     { label: 'Free', action: 'free' },
     { label: 'Reviews', action: 'reviews' },
     { label: 'Notice', action: 'notices' },
@@ -54,7 +56,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll));
 <template>
     <header
         class="sticky top-0 z-40 transition-all duration-300"
-        :class="scrolled ? 'border-b border-slate-200/70 bg-white/80 shadow-sm shadow-slate-200/50 backdrop-blur-xl' : 'bg-transparent'"
+        :class="scrolled ? 'border-b border-slate-200/70 bg-white/90 shadow-sm shadow-slate-200/50 backdrop-blur-md' : 'bg-transparent'"
     >
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 sm:px-6">
             <!-- Logo -->

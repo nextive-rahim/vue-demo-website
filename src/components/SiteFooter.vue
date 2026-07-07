@@ -7,7 +7,7 @@ const columns = [
         links: [
             { label: 'Courses', action: 'courses' },
             { label: 'Programs', action: 'programs' },
-            { label: 'Live classes', action: 'live' },
+            { label: "Today's Live", action: 'live' },
             { label: 'Free resources', action: 'free' },
         ],
     },

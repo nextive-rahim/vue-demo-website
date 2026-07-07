@@ -31,12 +31,39 @@ async function loadAds() {
     }
 }
 
-const stats = [
+// Editable from the admin "Home" tab; falls back to these defaults.
+const hero = ref({
+    hero_badge: '🚀 Learn at your own pace',
+    hero_title: 'Learn anything.',
+    hero_highlight: "It's possible.",
+    hero_subtitle: 'Notes, PDFs, videos, live classes and exams — all in one beautiful place. Join Demo Website and start building skills that matter.',
+});
+
+const stats = ref([
     { value: '12k+', label: 'Active students' },
     { value: '250+', label: 'Expert lessons' },
     { value: '98%', label: 'Success rate' },
     { value: '4.9', label: 'Average rating' },
-];
+]);
+
+async function loadSettings() {
+    try {
+        const { data } = await api.homeSettings();
+        if (data.hero_title) {
+            hero.value = {
+                hero_badge: data.hero_badge || hero.value.hero_badge,
+                hero_title: data.hero_title,
+                hero_highlight: data.hero_highlight || '',
+                hero_subtitle: data.hero_subtitle || hero.value.hero_subtitle,
+            };
+        }
+        if (Array.isArray(data.stats) && data.stats.length) {
+            stats.value = data.stats;
+        }
+    } catch {
+        // Keep defaults.
+    }
+}
 
 const features = [
     { icon: '📚', title: 'Rich content', text: 'Notes, PDFs, videos, live classes and exams — everything in one place.', color: 'from-indigo-500 to-blue-500' },
@@ -56,6 +83,7 @@ const testimonials = [
 onMounted(() => {
     load();
     loadAds();
+    loadSettings();
 });
 </script>
 
@@ -84,16 +112,16 @@ onMounted(() => {
                             <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75"></span>
                             <span class="relative inline-flex h-2 w-2 rounded-full bg-indigo-500"></span>
                         </span>
-                        🚀 Learn at your own pace
+                        {{ hero.hero_badge }}
                     </span>
 
                     <h1 class="animate-fade-up delay-100 mt-6 text-4xl font-black leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl xl:text-7xl">
-                        Learn anything.<br />
-                        <span class="text-gradient">It's possible.</span>
+                        {{ hero.hero_title }}<br v-if="hero.hero_highlight" />
+                        <span v-if="hero.hero_highlight" class="text-gradient">{{ hero.hero_highlight }}</span>
                     </h1>
 
                     <p class="animate-fade-up delay-200 mx-auto mt-6 max-w-xl text-lg text-slate-500 lg:mx-0">
-                        Notes, PDFs, videos, live classes and exams — all in one beautiful place. Join Demo Website and start building skills that matter.
+                        {{ hero.hero_subtitle }}
                     </p>
 
                     <div class="animate-fade-up delay-300 mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">

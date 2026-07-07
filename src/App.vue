@@ -33,27 +33,101 @@ const selectedCourseId = ref(null);
 const selectedNoticeId = ref(null);
 const selectedPostId = ref(null);
 const selectedProgramCategory = ref('all');
+const selectedExamId = ref(null);
 
 onMounted(async () => {
-    if (!getToken()) {
-        screen.value = 'home';
-        return;
+    if (getToken()) {
+        try {
+            const { data } = await api.user();
+            user.value = data;
+        } catch {
+            clearToken();
+        }
     }
-    try {
-        const { data } = await api.user();
-        user.value = data;
-    } catch {
-        clearToken();
-    }
-    screen.value = 'home';
+    restoreNav();
 });
+
+/**
+ * Restore the page (and scroll position) the user was on before a browser
+ * refresh. Transient auth steps fall back to home; a saved dashboard only
+ * restores when still logged in.
+ */
+function restoreNav() {
+    let saved = null;
+    try {
+        saved = JSON.parse(sessionStorage.getItem(NAV_KEY) || 'null');
+    } catch {
+        saved = null;
+    }
+
+    let target = 'home';
+    if (saved) {
+        selectedCourseId.value = saved.courseId ?? null;
+        selectedNoticeId.value = saved.noticeId ?? null;
+        selectedPostId.value = saved.postId ?? null;
+        selectedProgramCategory.value = saved.programCategory ?? 'all';
+
+        const transient = ['loading', 'phone', 'password', 'signup', 'forgot', 'reset'];
+        if (saved.screen === 'dashboard') {
+            target = user.value ? 'dashboard' : 'home';
+        } else if (saved.screen && !transient.includes(saved.screen)) {
+            target = saved.screen;
+        }
+    }
+
+    restoringScroll = true;
+    screen.value = target;
+
+    // Re-apply the saved scroll once the (async) content has had time to render.
+    const y = saved?.scrollY || 0;
+    let tries = 0;
+    const applyScroll = () => {
+        window.scrollTo(0, y);
+        tries += 1;
+        if (tries < 12 && Math.abs(window.scrollY - y) > 2) {
+            setTimeout(applyScroll, 120);
+        } else {
+            restoringScroll = false;
+        }
+    };
+    requestAnimationFrame(() => setTimeout(applyScroll, 80));
+}
 
 // Auth/account screens render in a card outside the cached marketing views.
 const authScreens = ['phone', 'password', 'signup', 'forgot', 'reset', 'dashboard'];
 const isAuthScreen = computed(() => authScreens.includes(screen.value));
 
-// Scroll to the top on every screen change (views stay cached via <KeepAlive>).
-watch(screen, () => window.scrollTo({ top: 0, behavior: 'auto' }));
+// --- Keep the current page (and scroll) across a browser refresh. ---
+const NAV_KEY = 'nav_state';
+let restoringScroll = false;
+
+function saveNav() {
+    if (screen.value === 'loading') return;
+    try {
+        sessionStorage.setItem(NAV_KEY, JSON.stringify({
+            screen: screen.value,
+            courseId: selectedCourseId.value,
+            noticeId: selectedNoticeId.value,
+            postId: selectedPostId.value,
+            programCategory: selectedProgramCategory.value,
+            scrollY: window.scrollY,
+        }));
+    } catch {
+        // Storage unavailable — ignore.
+    }
+}
+
+watch([screen, selectedCourseId, selectedNoticeId, selectedPostId, selectedProgramCategory], saveNav);
+window.addEventListener('beforeunload', saveNav);
+if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual';
+}
+
+// Scroll to the top on user navigation — but not while restoring after a refresh.
+watch(screen, () => {
+    if (restoringScroll) return;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+});
 
 function navigate(action) {
     if (['courses', 'notices', 'reviews', 'blog', 'about', 'live', 'free', 'programs'].includes(action)) {
@@ -71,6 +145,14 @@ function openPrograms(category) {
 
 function openCourse(id) {
     selectedCourseId.value = id;
+    selectedExamId.value = null;
+    screen.value = 'courseDetail';
+}
+
+/** Open a course straight into a specific exam's detail page. */
+function openExam({ courseId, contentId }) {
+    selectedCourseId.value = courseId;
+    selectedExamId.value = contentId;
     screen.value = 'courseDetail';
 }
 
@@ -147,13 +229,13 @@ function onLogout() {
                 @account="screen = 'dashboard'"
             />
 
-            <!-- Marketing views cached so switching pages doesn't re-fetch the API. -->
+            <!-- Marketing views cached so switching pages is instant and doesn't re-fetch the API. -->
             <KeepAlive :max="12">
             <HomeView v-if="screen === 'home'" @open="openCourse" @browse="screen = 'courses'" @login="startAuth" @programs="openPrograms" />
 
             <CoursesView v-else-if="screen === 'courses'" @open="openCourse" @back="screen = 'home'" />
 
-            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :user="user" @back="screen = 'courses'" @login="startAuth" />
+            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :initial-exam-id="selectedExamId" :user="user" @back="screen = 'courses'" @login="startAuth" />
 
             <NoticesView v-else-if="screen === 'notices'" @open="openNotice" @back="screen = 'home'" />
 
@@ -167,7 +249,7 @@ function onLogout() {
 
             <AboutView v-else-if="screen === 'about'" @back="screen = 'home'" @browse="screen = 'courses'" />
 
-            <LiveCoursesView v-else-if="screen === 'live'" @back="screen = 'home'" />
+            <LiveCoursesView v-else-if="screen === 'live'" @back="screen = 'home'" @open="openCourse" @open-exam="openExam" />
 
             <FreeResourcesView v-else-if="screen === 'free'" @back="screen = 'home'" />
 

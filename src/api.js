@@ -122,14 +122,17 @@ export const api = {
     posts: (type = null) => request('GET', `/posts${type ? `?type=${type}` : ''}`),
     post: (id) => request('GET', `/posts/${id}`),
 
+    // Public home page settings (hero + stats)
+    homeSettings: () => request('GET', '/home-settings'),
+
     // Public about page
     about: () => request('GET', '/about'),
 
     // Public advertisements (live only). Filter by placement: banner | popup | home
     advertisements: (placement = null) => request('GET', `/advertisements${placement ? `?placement=${placement}` : ''}`),
 
-    // Public live courses
-    liveCourses: () => request('GET', '/live-courses'),
+    // Today's live schedule (exams + classes from course content starting today)
+    todaysLive: () => request('GET', '/todays-live'),
 
     // Public free resources. Filter by type: note | pdf | book
     freeResources: (type = null) => request('GET', `/free-resources${type ? `?type=${type}` : ''}`),
