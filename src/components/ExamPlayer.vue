@@ -22,6 +22,7 @@ const result = ref(null);
 
 const starting = ref(false);
 const submitting = ref(false);
+const loadingResult = ref(false);
 
 // Countdown timer.
 const remainingSeconds = ref(0);
@@ -98,11 +99,9 @@ async function loadExam() {
         exam.value = (await api.getExam(props.courseId, props.contentId)).data;
         attempt.value = exam.value.attempt;
 
-        if (attempt.value && attempt.value.status === 'submitted') {
-            await loadResult();
-        } else {
-            phase.value = 'intro';
-        }
+        // Always land on the intro/detail screen. A submitted attempt gets a
+        // "View your result" action there instead of jumping straight to it.
+        phase.value = 'intro';
     } catch (e) {
         error.value = e instanceof ApiError ? e.message : 'Could not load this exam.';
         phase.value = 'error';
@@ -110,12 +109,16 @@ async function loadExam() {
 }
 
 async function loadResult() {
+    loadingResult.value = true;
+    error.value = null;
     try {
         result.value = (await api.examResult(props.courseId, props.contentId)).data;
         phase.value = 'result';
     } catch (e) {
         error.value = e instanceof ApiError ? e.message : 'Could not load your result.';
         phase.value = 'error';
+    } finally {
+        loadingResult.value = false;
     }
 }
 
@@ -352,13 +355,19 @@ onBeforeUnmount(stopTimer);
                     </div>
                 </dl>
 
-                <div class="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+                <div v-if="attempt && attempt.status === 'submitted'" class="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
+                    ✅ You've already submitted this exam. Open your result to see the analysis.
+                </div>
+                <div v-else class="rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-500">
                     📋 One attempt only. The exam auto-submits when the timer runs out. Choose one answer per question.
                 </div>
 
                 <AlertMessage v-if="error" type="error" :message="error" />
 
-                <div v-if="!exam.is_open" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                <!-- One attempt only: a submitted attempt leads to the result, never a re-take. -->
+                <AuthButton v-if="attempt && attempt.status === 'submitted'" :loading="loadingResult" @click="loadResult">View your result →</AuthButton>
+
+                <div v-else-if="!exam.is_open" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                     This exam window is closed. You cannot take it right now.
                 </div>
 

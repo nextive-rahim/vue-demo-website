@@ -34,6 +34,9 @@ const selectedNoticeId = ref(null);
 const selectedPostId = ref(null);
 const selectedProgramCategory = ref('all');
 const selectedExamId = ref(null);
+// Where the current course/exam was opened from, so back navigation and the
+// lit header tab return to the right place ('courses' or 'live').
+const courseOrigin = ref('courses');
 
 onMounted(async () => {
     if (getToken()) {
@@ -66,6 +69,7 @@ function restoreNav() {
         selectedNoticeId.value = saved.noticeId ?? null;
         selectedPostId.value = saved.postId ?? null;
         selectedProgramCategory.value = saved.programCategory ?? 'all';
+        courseOrigin.value = saved.courseOrigin ?? 'courses';
 
         const transient = ['loading', 'phone', 'password', 'signup', 'forgot', 'reset'];
         if (saved.screen === 'dashboard') {
@@ -110,6 +114,7 @@ function saveNav() {
             noticeId: selectedNoticeId.value,
             postId: selectedPostId.value,
             programCategory: selectedProgramCategory.value,
+            courseOrigin: courseOrigin.value,
             scrollY: window.scrollY,
         }));
     } catch {
@@ -117,7 +122,7 @@ function saveNav() {
     }
 }
 
-watch([screen, selectedCourseId, selectedNoticeId, selectedPostId, selectedProgramCategory], saveNav);
+watch([screen, selectedCourseId, selectedNoticeId, selectedPostId, selectedProgramCategory, courseOrigin], saveNav);
 window.addEventListener('beforeunload', saveNav);
 if ('scrollRestoration' in window.history) {
     window.history.scrollRestoration = 'manual';
@@ -143,9 +148,10 @@ function openPrograms(category) {
     screen.value = 'programs';
 }
 
-function openCourse(id) {
+function openCourse(id, origin = 'courses') {
     selectedCourseId.value = id;
     selectedExamId.value = null;
+    courseOrigin.value = origin;
     screen.value = 'courseDetail';
 }
 
@@ -153,8 +159,18 @@ function openCourse(id) {
 function openExam({ courseId, contentId }) {
     selectedCourseId.value = courseId;
     selectedExamId.value = contentId;
+    courseOrigin.value = 'live';
     screen.value = 'courseDetail';
 }
+
+// The course detail screen belongs to whichever tab it was opened from, so the
+// header keeps that tab lit instead of always falling back to Courses.
+const headerActive = computed(() =>
+    (screen.value === 'courseDetail' && courseOrigin.value === 'live') ? 'live' : screen.value,
+);
+
+/** Human label for the course detail's top back link. */
+const courseBackLabel = computed(() => (courseOrigin.value === 'live' ? "Today's Live" : 'All courses'));
 
 function openNotice(id) {
     selectedNoticeId.value = id;
@@ -223,7 +239,7 @@ function onLogout() {
         <template v-else>
             <SiteHeader
                 :user="user"
-                :active="screen"
+                :active="headerActive"
                 @navigate="navigate"
                 @login="startAuth"
                 @account="screen = 'dashboard'"
@@ -235,7 +251,7 @@ function onLogout() {
 
             <CoursesView v-else-if="screen === 'courses'" @open="openCourse" @back="screen = 'home'" />
 
-            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :initial-exam-id="selectedExamId" :user="user" @back="screen = 'courses'" @login="startAuth" />
+            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :initial-exam-id="selectedExamId" :user="user" :back-label="courseBackLabel" @back="screen = courseOrigin" @login="startAuth" />
 
             <NoticesView v-else-if="screen === 'notices'" @open="openNotice" @back="screen = 'home'" />
 
@@ -249,7 +265,7 @@ function onLogout() {
 
             <AboutView v-else-if="screen === 'about'" @back="screen = 'home'" @browse="screen = 'courses'" />
 
-            <LiveCoursesView v-else-if="screen === 'live'" @back="screen = 'home'" @open="openCourse" @open-exam="openExam" />
+            <LiveCoursesView v-else-if="screen === 'live'" @back="screen = 'home'" @open="openCourse($event, 'live')" @open-exam="openExam" />
 
             <FreeResourcesView v-else-if="screen === 'free'" @back="screen = 'home'" />
 

@@ -8,6 +8,7 @@ const props = defineProps({
     courseId: { type: [Number, String], required: true },
     initialExamId: { type: [Number, String], default: null },
     user: { type: Object, default: null },
+    backLabel: { type: String, default: 'All courses' },
 });
 
 const emit = defineEmits(['back', 'login']);
@@ -139,7 +140,7 @@ watch(() => props.initialExamId, (id) => {
 
         <button class="relative mb-8 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-indigo-600" @click="emit('back')">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            All courses
+            {{ backLabel }}
         </button>
 
         <AlertMessage type="error" :message="error" class="relative mb-6" />
