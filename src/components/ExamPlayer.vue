@@ -70,6 +70,23 @@ const analysis = computed(() => {
     return { correct, wrong, unanswered, total: qs.length };
 });
 
+/** Whether the student left a question blank in the graded review. */
+function isSkipped(question) {
+    return question.your_option_id === null || question.your_option_id === undefined;
+}
+
+/** Review badge label: Skipped when unanswered, otherwise Correct / Incorrect. */
+function reviewBadgeLabel(question) {
+    if (isSkipped(question)) return 'Skipped';
+    return question.is_correct ? 'Correct' : 'Incorrect';
+}
+
+/** Review badge colour to match its label. */
+function reviewBadgeClass(question) {
+    if (isSkipped(question)) return 'bg-slate-100 text-slate-500';
+    return question.is_correct ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+}
+
 function formatClock(totalSeconds) {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
@@ -514,8 +531,8 @@ onBeforeUnmount(stopTimer);
                                     </p>
                                     <span
                                         class="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold"
-                                        :class="question.is_correct ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
-                                    >{{ question.is_correct ? 'Correct' : 'Incorrect' }}</span>
+                                        :class="reviewBadgeClass(question)"
+                                    >{{ reviewBadgeLabel(question) }}</span>
                                 </div>
 
                                 <div class="mt-3 space-y-2">
@@ -630,7 +647,7 @@ onBeforeUnmount(stopTimer);
                                 <div v-for="(question, index) in practiceResult.questions" :key="question.id" class="rounded-xl border border-slate-200 p-4">
                                     <div class="flex items-start justify-between gap-3">
                                         <p class="font-medium text-slate-900"><span class="text-slate-400">{{ index + 1 }}.</span> {{ question.body }}</p>
-                                        <span class="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold" :class="question.is_correct ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">{{ question.is_correct ? 'Correct' : 'Incorrect' }}</span>
+                                        <span class="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold" :class="reviewBadgeClass(question)">{{ reviewBadgeLabel(question) }}</span>
                                     </div>
                                     <div class="mt-3 space-y-2">
                                         <div

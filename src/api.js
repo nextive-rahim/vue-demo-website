@@ -146,6 +146,10 @@ export const api = {
     // Step 3: load a single content item's data when it is clicked.
     courseContent: (courseId, contentId) => request('GET', `/courses/${courseId}/contents/${contentId}`),
 
+    // Enrollment (auth required). Submit manual payment details to enroll in a course.
+    myEnrollments: () => request('GET', '/enrollments'),
+    enroll: (courseId, payload) => request('POST', `/courses/${courseId}/enroll`, payload),
+
     // Student exam player (auth required — Bearer token).
     getExam: (courseId, contentId) => request('GET', `/courses/${courseId}/contents/${contentId}/exam`),
     startExam: (courseId, contentId) => request('POST', `/courses/${courseId}/contents/${contentId}/exam/start`),
