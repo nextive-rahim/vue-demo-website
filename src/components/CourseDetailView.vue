@@ -8,18 +8,20 @@ import ExamPlayer from './ExamPlayer.vue';
 const props = defineProps({
     courseId: { type: [Number, String], required: true },
     initialExamId: { type: [Number, String], default: null },
+    checkout: { type: Boolean, default: false },
     user: { type: Object, default: null },
     backLabel: { type: String, default: 'All courses' },
 });
 
-const emit = defineEmits(['back', 'login']);
+const emit = defineEmits(['back', 'login', 'open-exam', 'close-exam', 'open-checkout', 'close-checkout', 'enrolled']);
 
 const course = ref(null);
 const loading = ref(true);
 const error = ref(null);
 
-// Enrollment / checkout state.
-const checkingOut = ref(false);
+// The exam page and checkout form are owned by App.vue so that each is a browser
+// history entry — this view just reflects what it's told to show.
+const checkingOut = computed(() => props.checkout);
 const enrolling = ref(false);
 const enrollError = ref(null);
 
@@ -61,8 +63,7 @@ async function startEnroll() {
         await enrollFree();
         return;
     }
-    checkingOut.value = true;
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    emit('open-checkout');
 }
 
 /** Free courses skip checkout and enroll immediately. */
@@ -81,9 +82,8 @@ async function enrollFree() {
 
 /** Payment submitted from the checkout form — refresh to reflect the pending status. */
 async function onEnrollmentSubmitted() {
-    checkingOut.value = false;
+    emit('enrolled');
     await load();
-    window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 // Step 3 state: the content item the user clicked and its freshly-loaded data.
@@ -137,16 +137,26 @@ async function openContent(item) {
 }
 
 // Exams open as a dedicated full page (detail → take → analysis), not inline.
+// App.vue drives which one via `initialExamId`, so Back closes it.
 const examItem = ref(null);
 
 function openExam(item) {
-    examItem.value = item;
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    emit('open-exam', item.id);
 }
 
 function closeExam() {
-    examItem.value = null;
+    emit('close-exam');
 }
+
+/**
+ * Which sub-page is on screen. Driving the <Transition> off this means the
+ * lessons list doesn't re-animate when a lesson is expanded inline.
+ */
+const pageKey = computed(() => {
+    if (examItem.value) return `exam-${examItem.value.id}`;
+    if (checkingOut.value) return 'checkout';
+    return isEnrolled.value ? 'lessons' : 'landing';
+});
 
 const typeMeta = {
     note: { label: 'Note', icon: '📝', color: 'bg-amber-100 text-amber-700' },
@@ -190,7 +200,6 @@ watch(() => props.courseId, () => {
     selectedId.value = null;
     selectedContent.value = null;
     examItem.value = null;
-    checkingOut.value = false;
     enrollError.value = null;
     load();
 });
@@ -221,9 +230,12 @@ watch(() => props.initialExamId, (id) => {
         </div>
 
         <AlertMessage type="error" :message="error" class="relative mb-6" />
-        <div v-if="loading" class="relative py-16 text-center text-slate-400">Loading…</div>
 
-        <div v-else-if="course" class="animate-fade-up relative">
+        <!-- Cross-fade between the view's sub-pages (landing / checkout / lessons / exam). -->
+        <Transition name="page" mode="out-in">
+        <div v-if="loading" key="loading" class="relative py-16 text-center text-slate-400">Loading…</div>
+
+        <div v-else-if="course" :key="pageKey" class="relative">
             <!-- Exam full page: detail → take → analysis -->
             <div v-if="examItem">
                 <div v-if="!user" class="rounded-3xl border border-indigo-100 bg-indigo-50 px-6 py-12 text-center">
@@ -239,7 +251,7 @@ watch(() => props.initialExamId, (id) => {
             <CourseCheckout
                 v-else-if="checkingOut"
                 :course="course"
-                @back="checkingOut = false"
+                @back="emit('close-checkout')"
                 @submitted="onEnrollmentSubmitted"
             />
 
@@ -508,5 +520,6 @@ watch(() => props.initialExamId, (id) => {
             </ul>
             </template>
         </div>
+        </Transition>
     </div>
 </template>

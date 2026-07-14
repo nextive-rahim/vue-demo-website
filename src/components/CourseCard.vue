@@ -1,10 +1,15 @@
 <script setup>
+import { computed } from 'vue';
+
 const props = defineProps({
     course: { type: Object, required: true },
     index: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['open']);
+
+const isEnrolled = computed(() => props.course.is_enrolled === true);
+const isPending = computed(() => props.course.enrollment?.status === 'pending');
 
 const gradients = [
     'from-indigo-500 to-violet-600',
@@ -68,7 +73,21 @@ function money(n) {
                         <span class="text-base font-black text-slate-900">৳{{ money(course.price) }}</span>
                     </template>
                 </div>
-                <span class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
+                <span
+                    v-if="isEnrolled"
+                    class="inline-flex items-center gap-1 rounded-full bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition group-hover:bg-indigo-700"
+                >
+                    Start learning
+                    <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </span>
+                <span
+                    v-else-if="isPending"
+                    class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3.5 py-1.5 text-xs font-bold text-amber-700"
+                >
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                    Pending
+                </span>
+                <span v-else class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
                     Enroll
                     <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </span>

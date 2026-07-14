@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { api, getToken, clearToken } from './api';
 import SiteHeader from './components/SiteHeader.vue';
 import HomeView from './components/HomeView.vue';
@@ -33,7 +33,10 @@ const selectedCourseId = ref(null);
 const selectedNoticeId = ref(null);
 const selectedPostId = ref(null);
 const selectedProgramCategory = ref('all');
+// The exam page and the checkout form are sub-pages of the course detail view.
+// They live here (not inside it) so each one is a browser history entry of its own.
 const selectedExamId = ref(null);
+const checkingOut = ref(false);
 // Where the current course/exam was opened from, so back navigation and the
 // lit header tab return to the right place ('courses' or 'live').
 const courseOrigin = ref('courses');
@@ -79,8 +82,18 @@ function restoreNav() {
         }
     }
 
+    selectedExamId.value = saved?.examId ?? null;
+    checkingOut.value = saved?.checkout ?? false;
+
     restoringScroll = true;
+    // Restoring isn't a navigation: seed the entry we're already on rather than
+    // pushing a new one, so the first Back leaves the site (as the user expects).
+    applyingHistory = true;
     screen.value = target;
+    nextTick(() => {
+        applyingHistory = false;
+        window.history.replaceState({ nav: navState.value, scrollY: saved?.scrollY || 0 }, '');
+    });
 
     // Re-apply the saved scroll once the (async) content has had time to render.
     const y = saved?.scrollY || 0;
@@ -105,31 +118,96 @@ const isAuthScreen = computed(() => authScreens.includes(screen.value));
 const NAV_KEY = 'nav_state';
 let restoringScroll = false;
 
+/** Everything that identifies the page the user is looking at. */
+const navState = computed(() => ({
+    screen: screen.value,
+    courseId: selectedCourseId.value,
+    noticeId: selectedNoticeId.value,
+    postId: selectedPostId.value,
+    programCategory: selectedProgramCategory.value,
+    courseOrigin: courseOrigin.value,
+    examId: selectedExamId.value,
+    checkout: checkingOut.value,
+}));
+
 function saveNav() {
     if (screen.value === 'loading') return;
     try {
-        sessionStorage.setItem(NAV_KEY, JSON.stringify({
-            screen: screen.value,
-            courseId: selectedCourseId.value,
-            noticeId: selectedNoticeId.value,
-            postId: selectedPostId.value,
-            programCategory: selectedProgramCategory.value,
-            courseOrigin: courseOrigin.value,
-            scrollY: window.scrollY,
-        }));
+        sessionStorage.setItem(NAV_KEY, JSON.stringify({ ...navState.value, scrollY: window.scrollY }));
     } catch {
         // Storage unavailable — ignore.
     }
 }
 
-watch([screen, selectedCourseId, selectedNoticeId, selectedPostId, selectedProgramCategory, courseOrigin], saveNav);
 window.addEventListener('beforeunload', saveNav);
 if ('scrollRestoration' in window.history) {
     window.history.scrollRestoration = 'manual';
 }
 
-// Scroll to the top on user navigation — but not while restoring after a refresh.
-watch(screen, () => {
+// --- Browser history -------------------------------------------------------
+// The site has no router: screens are component state, so without this the Back
+// button would leave the site entirely. Each navigation is mirrored into a
+// History API entry (state only — the URL is untouched, since deep links would
+// need server-side rewrites) which makes Back/Forward walk the app's own pages.
+
+// True while we're applying a state the browser handed us, so the watcher below
+// doesn't push that back onto the stack and trap the user in a loop.
+let applyingHistory = false;
+
+watch(navState, (nav, previous) => {
+    if (applyingHistory || nav.screen === 'loading') return;
+
+    if (replaceNextNav) {
+        replaceNextNav = false;
+        window.history.replaceState({ nav, scrollY: 0 }, '');
+        saveNav();
+        return;
+    }
+
+    // Runs before the DOM updates, so window.scrollY is still the outgoing
+    // page's — stash it on its entry so Back returns to where the user was.
+    window.history.replaceState({ nav: previous, scrollY: window.scrollY }, '');
+    window.history.pushState({ nav, scrollY: 0 }, '');
+    saveNav();
+});
+
+window.addEventListener('popstate', (event) => {
+    const nav = event.state?.nav;
+    if (!nav) return;
+
+    applyingHistory = true;
+    restoringScroll = true;
+    applyNav(nav);
+
+    const y = event.state.scrollY || 0;
+    nextTick(() => {
+        applyingHistory = false;
+        window.scrollTo(0, y);
+        // Cached views re-render synchronously, but a freshly-fetched one may
+        // still be growing — re-apply once it has settled.
+        setTimeout(() => {
+            window.scrollTo(0, y);
+            restoringScroll = false;
+        }, 80);
+        saveNav();
+    });
+});
+
+/** Put the app back on the page described by a history entry. */
+function applyNav(nav) {
+    selectedCourseId.value = nav.courseId ?? null;
+    selectedNoticeId.value = nav.noticeId ?? null;
+    selectedPostId.value = nav.postId ?? null;
+    selectedProgramCategory.value = nav.programCategory ?? 'all';
+    courseOrigin.value = nav.courseOrigin ?? 'courses';
+    selectedExamId.value = nav.examId ?? null;
+    checkingOut.value = nav.checkout ?? false;
+    // A stale entry can point at the dashboard after a logout.
+    screen.value = nav.screen === 'dashboard' && !user.value ? 'home' : (nav.screen ?? 'home');
+}
+
+// Scroll to the top on user navigation — but not while restoring a saved position.
+watch(navState, () => {
     if (restoringScroll) return;
     window.scrollTo({ top: 0, behavior: 'auto' });
 });
@@ -151,6 +229,7 @@ function openPrograms(category) {
 function openCourse(id, origin = 'courses') {
     selectedCourseId.value = id;
     selectedExamId.value = null;
+    checkingOut.value = false;
     courseOrigin.value = origin;
     screen.value = 'courseDetail';
 }
@@ -159,8 +238,26 @@ function openCourse(id, origin = 'courses') {
 function openExam({ courseId, contentId }) {
     selectedCourseId.value = courseId;
     selectedExamId.value = contentId;
+    checkingOut.value = false;
     courseOrigin.value = 'live';
     screen.value = 'courseDetail';
+}
+
+/**
+ * The course detail view's own sub-pages. They're driven from here so each gets
+ * its own history entry and the Back button steps exam → lesson list → catalog.
+ */
+function openExamContent(contentId) {
+    selectedExamId.value = contentId;
+}
+
+// After a payment is submitted the form is gone for good, so replace its history
+// entry rather than pushing — Back should never land on a submitted form.
+let replaceNextNav = false;
+
+function onEnrolled() {
+    replaceNextNav = true;
+    checkingOut.value = false;
 }
 
 // The course detail screen belongs to whichever tab it was opened from, so the
@@ -251,7 +348,21 @@ function onLogout() {
 
             <CoursesView v-else-if="screen === 'courses'" @open="openCourse" @back="screen = 'home'" />
 
-            <CourseDetailView v-else-if="screen === 'courseDetail'" :course-id="selectedCourseId" :initial-exam-id="selectedExamId" :user="user" :back-label="courseBackLabel" @back="screen = courseOrigin" @login="startAuth" />
+            <CourseDetailView
+                v-else-if="screen === 'courseDetail'"
+                :course-id="selectedCourseId"
+                :initial-exam-id="selectedExamId"
+                :checkout="checkingOut"
+                :user="user"
+                :back-label="courseBackLabel"
+                @back="screen = courseOrigin"
+                @login="startAuth"
+                @open-exam="openExamContent"
+                @close-exam="selectedExamId = null"
+                @open-checkout="checkingOut = true"
+                @close-checkout="checkingOut = false"
+                @enrolled="onEnrolled"
+            />
 
             <NoticesView v-else-if="screen === 'notices'" @open="openNotice" @back="screen = 'home'" />
 

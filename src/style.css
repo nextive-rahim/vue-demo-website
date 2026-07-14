@@ -62,12 +62,17 @@ body {
     will-change: transform;
 }
 
-/* Smooth page/tab transitions. */
-.page-enter-active,
-.page-leave-active {
+/* Smooth page/tab transitions. Used with mode="out-in", so the leave half is
+ * kept short — the two run back to back and a slow exit reads as lag. */
+.page-enter-active {
     transition:
         opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
         transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.page-leave-active {
+    transition:
+        opacity 0.14s ease-in,
+        transform 0.14s ease-in;
 }
 .page-enter-from {
     opacity: 0;
